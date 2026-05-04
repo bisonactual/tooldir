@@ -38,6 +38,11 @@ function normalizeCoolant(value: unknown): ToolCoolant {
   return COOLANT_MODES.includes(text as ToolCoolant) ? text as ToolCoolant : 'off';
 }
 
+function parseFusionString(value: unknown): string {
+  const text = String(value || '').trim();
+  return text.replace(/^'/, '').replace(/'$/, '');
+}
+
 export function normalizeBearSenderTool(raw: any, index: number): BearSenderTool {
   const name = String(raw?.name || raw?.label || `Tool ${index + 1}`);
   return {
@@ -56,6 +61,9 @@ export function normalizeBearSenderTool(raw: any, index: number): BearSenderTool
     stepover: Math.min(100, Math.max(0, num(raw?.stepover, 55))),
     coolant: normalizeCoolant(raw?.coolant),
     notes: String(raw?.notes || ''),
+    manufacturer: String(raw?.manufacturer || raw?.vendor || ''),
+    cutterMaterial: String(raw?.cutterMaterial || raw?.BMC || '').toLowerCase() === 'hss' ? 'hss' : 'carbide',
+    coating: raw?.coating || 'uncoated',
   };
 }
 
@@ -109,8 +117,15 @@ function localToolFromFusion(raw: any, index: number): BearSenderTool {
     defaultPlunge: preset.v_f_plunge ?? parseExpressionNumber(expressions.tool_feedPlunge, 220),
     stepdown: parseExpressionNumber(expressions.tool_stepdown, 1),
     stepover: parseStepoverPercent(expressions.tool_stepover, 55),
-    coolant: preset['tool-coolant'] === 'flood' || preset['tool-coolant'] === 'mist' ? preset['tool-coolant'] : 'off',
+    coolant: preset['tool-coolant'] === 'flood' || preset['tool-coolant'] === 'mist'
+      ? preset['tool-coolant']
+      : parseFusionString(expressions.tool_coolant) === 'flood' || parseFusionString(expressions.tool_coolant) === 'mist'
+        ? parseFusionString(expressions.tool_coolant)
+        : 'off',
     notes: post.comment || raw?.description || '',
+    manufacturer: raw?.vendor || parseFusionString(raw?.expressions?.tool_vendor),
+    cutterMaterial: String(raw?.BMC || parseFusionString(raw?.expressions?.tool_material)).toLowerCase() === 'hss' ? 'hss' : 'carbide',
+    coating: 'uncoated',
   }, index);
 }
 
@@ -131,8 +146,9 @@ export function bearSenderToolToPublishInput(tool: BearSenderTool): { tool: Tool
       diameter: tool.diameter,
       flutes: tool.flutes,
       vAngle: tool.vAngle,
-      manufacturer: '',
-      cutterMaterial: 'carbide',
+      manufacturer: tool.manufacturer || '',
+      cutterMaterial: tool.cutterMaterial || 'carbide',
+      coating: 'uncoated',
       productUrl: '',
       notes: tool.notes,
       source: 'bearsender',

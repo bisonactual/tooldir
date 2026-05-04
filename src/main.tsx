@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Download, Github, Import, Library, LogOut, Plus, Search, ThumbsUp, Upload, User } from 'lucide-react';
-import { bearSenderToolToPublishInput, exportBearSenderPayload, exportFusionPayload, parseToolLibraryJson } from './lib/adapters';
-import { COOLANT_MODES, CUTTER_MATERIAL_LABELS, CUTTER_MATERIALS, FLUTE_COUNTS, generatedToolName, emptyRecipeInput, emptyToolInput, TOOL_TYPE_LABELS, TOOL_TYPES, WORK_MATERIALS } from './lib/types';
+import { Download, FileDown, Github, Library, LogOut, Plus, Search, ThumbsUp, Upload, UploadCloud, User } from 'lucide-react';
+import { bearSenderToolToPublishInput, exportBearSenderPayload, exportFusionPayload } from './lib/adapters';
+import { parseToolLibraryFile } from './lib/importers';
+import { COOLANT_MODES, CUTTER_MATERIAL_LABELS, CUTTER_MATERIALS, FLUTE_COUNTS, generatedToolName, emptyRecipeInput, emptyToolInput, TOOL_COATING_LABELS, TOOL_COATINGS, TOOL_TYPE_LABELS, TOOL_TYPES, WORK_MATERIALS } from './lib/types';
 import type { LibraryTool, PublishToolInput, Recipe, RecipeInput, ToolInput, UserProfile, UserTool } from './lib/types';
 import './styles.css';
 
@@ -107,7 +108,7 @@ function App() {
   }
 
   async function importFile(file: File) {
-    const imported = parseToolLibraryJson(await file.text());
+    const imported = await parseToolLibraryFile(file);
     if (!imported.length) return;
     for (const importedTool of imported) {
       const payload = bearSenderToolToPublishInput(importedTool);
@@ -164,10 +165,10 @@ function App() {
       <section className="toolbar">
         <label className="search">
           <Search size={18} />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search tool, shape, manufacturer, carbide, HSS" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search tool, shape, manufacturer, carbide, HSS, coating" />
         </label>
         <label className={`button ${user ? '' : 'disabled'}`}>
-          <Import size={18} />
+          <UploadCloud size={18} />
           Import Fusion/BearSender
           <input type="file" accept=".json,.tools,application/json" disabled={!user} onChange={event => {
             const file = event.target.files?.[0];
@@ -175,8 +176,8 @@ function App() {
             event.currentTarget.value = '';
           }} />
         </label>
-        <button disabled={!user || !myTools.length} onClick={() => downloadJson('printnc-tools.fusion.json', exportFusionPayload(myTools))}><Download size={18} /> Fusion</button>
-        <button disabled={!user || !myTools.length} onClick={() => downloadJson('bearsender-tools.json', exportBearSenderPayload(myTools))}><Download size={18} /> BearSender</button>
+        <button disabled={!user || !myTools.length} onClick={() => downloadJson('printnc-tools.fusion.json', exportFusionPayload(myTools))}><FileDown size={18} /> Export Fusion</button>
+        <button disabled={!user || !myTools.length} onClick={() => downloadJson('bearsender-tools.json', exportBearSenderPayload(myTools))}><Download size={18} /> Export BearSender</button>
       </section>
 
       <div className="layout">
@@ -188,7 +189,7 @@ function App() {
                 <div className="cardHeader">
                   <div>
                     <h3>{entry.name}</h3>
-                    <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
+                    <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_COATING_LABELS[entry.coating]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
                   </div>
                   <button disabled={!user} onClick={() => void addToMine(entry, topRecipeByTool.get(entry.id)?.id).catch(err => setMessage(err.message))}><Plus size={16} /> My list</button>
                 </div>
@@ -217,6 +218,7 @@ function App() {
               <Field label="Manufacturer"><input value={tool.manufacturer} onChange={event => setTool({ ...tool, manufacturer: event.target.value })} placeholder="Datron, Amana, Sorotec" /></Field>
               <Field label="Shape"><select value={tool.type} onChange={event => setTool({ ...tool, type: event.target.value as ToolInput['type'] })}>{TOOL_TYPES.map(value => <option key={value} value={value}>{TOOL_TYPE_LABELS[value]}</option>)}</select></Field>
               <Field label="Type"><select value={tool.cutterMaterial} onChange={event => setTool({ ...tool, cutterMaterial: event.target.value as ToolInput['cutterMaterial'] })}>{CUTTER_MATERIALS.map(value => <option key={value} value={value}>{CUTTER_MATERIAL_LABELS[value]}</option>)}</select></Field>
+              <Field label="Coating"><select value={tool.coating} onChange={event => setTool({ ...tool, coating: event.target.value as ToolInput['coating'] })}>{TOOL_COATINGS.map(value => <option key={value} value={value}>{TOOL_COATING_LABELS[value]}</option>)}</select></Field>
               <Field label="Diameter mm"><NumberInput value={tool.diameter} step={0.001} onChange={value => setTool({ ...tool, diameter: value, units: 'mm' })} /></Field>
               <Field label="Flutes"><select value={tool.flutes} onChange={event => setTool({ ...tool, flutes: Number(event.target.value) })}>{FLUTE_COUNTS.map(value => <option key={value} value={value}>{value}</option>)}</select></Field>
               <Field label="V angle"><NumberInput value={tool.vAngle} step={0.1} onChange={value => setTool({ ...tool, vAngle: value })} /></Field>

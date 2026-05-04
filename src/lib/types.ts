@@ -1,6 +1,7 @@
 export type ToolUnits = 'mm';
 export type ToolCoolant = 'off' | 'flood' | 'mist';
 export type CutterMaterial = 'carbide' | 'hss';
+export type ToolCoating = 'dlc' | 'uncoated' | 'altin' | 'altisin' | 'other';
 export type ToolType =
   | 'endmill'
   | 'ballmill'
@@ -28,6 +29,7 @@ export interface Tool {
   vAngle: number;
   manufacturer: string;
   cutterMaterial: CutterMaterial;
+  coating: ToolCoating;
   productUrl: string;
   notes: string;
   source: 'manual' | 'fusion' | 'bearsender';
@@ -74,6 +76,7 @@ export interface ToolInput {
   vAngle: number;
   manufacturer: string;
   cutterMaterial: CutterMaterial;
+  coating: ToolCoating;
   productUrl: string;
   notes: string;
   source: Tool['source'];
@@ -116,6 +119,9 @@ export interface BearSenderTool {
   stepover: number;
   coolant: ToolCoolant;
   notes: string;
+  manufacturer?: string;
+  cutterMaterial?: CutterMaterial;
+  coating?: ToolCoating;
 }
 
 export interface BearSenderPayload {
@@ -126,6 +132,7 @@ export interface BearSenderPayload {
 export const TOOL_TYPES: ToolType[] = ['endmill', 'ballmill', 'vbit', 'drill', 'surfacing', 'engraving', 'chamfer', 'other'];
 export const COOLANT_MODES: ToolCoolant[] = ['off', 'flood', 'mist'];
 export const CUTTER_MATERIALS: CutterMaterial[] = ['carbide', 'hss'];
+export const TOOL_COATINGS: ToolCoating[] = ['dlc', 'uncoated', 'altin', 'altisin', 'other'];
 export const WORK_MATERIALS = ['Wood', 'Plastic', 'Brass', 'Bronze', 'Aluminium', 'Mild Steel', 'Other'] as const;
 export const FLUTE_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -145,10 +152,19 @@ export const CUTTER_MATERIAL_LABELS: Record<CutterMaterial, string> = {
   hss: 'HSS',
 };
 
-export function generatedToolName(tool: Pick<ToolInput, 'manufacturer' | 'cutterMaterial' | 'type' | 'diameter' | 'flutes'>): string {
+export const TOOL_COATING_LABELS: Record<ToolCoating, string> = {
+  dlc: 'DLC',
+  uncoated: 'Uncoated',
+  altin: 'AlTiN',
+  altisin: 'AlTiSiN',
+  other: 'Other',
+};
+
+export function generatedToolName(tool: Pick<ToolInput, 'manufacturer' | 'cutterMaterial' | 'coating' | 'type' | 'diameter' | 'flutes'>): string {
   const parts = [
     tool.manufacturer.trim(),
     CUTTER_MATERIAL_LABELS[tool.cutterMaterial],
+    TOOL_COATING_LABELS[tool.coating],
     `${tool.diameter || 0} mm`,
     `${tool.flutes}F`,
     TOOL_TYPE_LABELS[tool.type],
@@ -166,6 +182,7 @@ export function emptyToolInput(): ToolInput {
     vAngle: 0,
     manufacturer: '',
     cutterMaterial: 'carbide',
+    coating: 'uncoated',
     productUrl: '',
     notes: '',
     source: 'manual',
