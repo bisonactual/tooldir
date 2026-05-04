@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Download, FileDown, Github, Info, Library, List, LogOut, Plus, Search, ThumbsUp, Trash2, Upload, UploadCloud, User, X } from 'lucide-react';
 import { bearSenderToolToPublishInput, exportBearSenderPayload, exportFusionPayload } from './lib/adapters';
 import { parseToolLibraryFile } from './lib/importers';
-import { COOLANT_MODES, CUTTER_MATERIAL_LABELS, CUTTER_MATERIALS, FLUTE_COUNTS, generatedToolName, emptyRecipeInput, emptyToolInput, TOOL_COATING_LABELS, TOOL_COATINGS, TOOL_TYPE_LABELS, TOOL_TYPES, WORK_MATERIALS } from './lib/types';
+import { COOLANT_MODES, CUTTER_MATERIAL_LABELS, CUTTER_MATERIALS, FLUTE_COUNTS, coatingLabel, generatedToolName, emptyRecipeInput, emptyToolInput, TOOL_COATING_LABELS, TOOL_COATINGS, TOOL_TYPE_LABELS, TOOL_TYPES, WORK_MATERIALS } from './lib/types';
 import type { LibraryTool, PublishToolInput, Recipe, RecipeInput, ToolInput, UserProfile, UserTool } from './lib/types';
 import './styles.css';
 
@@ -154,7 +154,7 @@ function App() {
       item.tool.manufacturer,
       TOOL_TYPE_LABELS[item.tool.type],
       CUTTER_MATERIAL_LABELS[item.tool.cutterMaterial],
-      TOOL_COATING_LABELS[item.tool.coating],
+      coatingLabel(item.tool),
       item.recipe?.material || '',
       item.recipe?.operation || '',
     ].some(value => value.toLowerCase().includes(q));
@@ -232,7 +232,7 @@ function App() {
                   <div className="cardHeader">
                     <div>
                       <h3>{entry.name}</h3>
-                      <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_COATING_LABELS[entry.coating]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
+                      <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {coatingLabel(entry)} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
                     </div>
                     <div className="cardActions">
                       <button className="iconButton" title="Tool details" onClick={() => setDetails(entry)}><Info size={16} /></button>
@@ -266,7 +266,7 @@ function App() {
                   <div className="cardHeader">
                     <div>
                       <h3>T{item.toolNumber} · {item.tool.name}</h3>
-                      <p>{item.tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[item.tool.cutterMaterial]} · {TOOL_COATING_LABELS[item.tool.coating]} · {TOOL_TYPE_LABELS[item.tool.type]} · {item.tool.diameter} mm · {item.tool.flutes}F</p>
+                      <p>{item.tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[item.tool.cutterMaterial]} · {coatingLabel(item.tool)} · {TOOL_TYPE_LABELS[item.tool.type]} · {item.tool.diameter} mm · {item.tool.flutes}F</p>
                     </div>
                     <div className="cardActions">
                       <button className="iconButton" title="Tool details" onClick={() => setDetails(item)}><Info size={16} /></button>
@@ -297,7 +297,8 @@ function App() {
               <Field label="Manufacturer"><input value={tool.manufacturer} onChange={event => setTool({ ...tool, manufacturer: event.target.value })} placeholder="Datron, Amana, Sorotec" /></Field>
               <Field label="Shape"><select value={tool.type} onChange={event => setTool({ ...tool, type: event.target.value as ToolInput['type'] })}>{TOOL_TYPES.map(value => <option key={value} value={value}>{TOOL_TYPE_LABELS[value]}</option>)}</select></Field>
               <Field label="Type"><select value={tool.cutterMaterial} onChange={event => setTool({ ...tool, cutterMaterial: event.target.value as ToolInput['cutterMaterial'] })}>{CUTTER_MATERIALS.map(value => <option key={value} value={value}>{CUTTER_MATERIAL_LABELS[value]}</option>)}</select></Field>
-              <Field label="Coating"><select value={tool.coating} onChange={event => setTool({ ...tool, coating: event.target.value as ToolInput['coating'] })}>{TOOL_COATINGS.map(value => <option key={value} value={value}>{TOOL_COATING_LABELS[value]}</option>)}</select></Field>
+              <Field label="Coating"><select value={tool.coating} onChange={event => setTool({ ...tool, coating: event.target.value as ToolInput['coating'], coatingCustom: event.target.value === 'other' ? tool.coatingCustom : '' })}>{TOOL_COATINGS.map(value => <option key={value} value={value}>{TOOL_COATING_LABELS[value]}</option>)}</select></Field>
+              {tool.coating === 'other' && <Field label="Specify Coating"><input value={tool.coatingCustom} onChange={event => setTool({ ...tool, coatingCustom: event.target.value })} placeholder="TiB2, ZrN, diamond" /></Field>}
               <Field label="Diameter mm"><NumberInput value={tool.diameter} step={0.001} onChange={value => setTool({ ...tool, diameter: value, units: 'mm' })} /></Field>
               <Field label="Flutes"><select value={tool.flutes} onChange={event => setTool({ ...tool, flutes: Number(event.target.value) })}>{FLUTE_COUNTS.map(value => <option key={value} value={value}>{value}</option>)}</select></Field>
               <Field label="V angle"><NumberInput value={tool.vAngle} step={0.1} onChange={value => setTool({ ...tool, vAngle: value })} /></Field>
@@ -312,7 +313,7 @@ function App() {
               <Field label="Coolant"><select value={recipe.coolant} onChange={event => setRecipe({ ...recipe, coolant: event.target.value as RecipeInput['coolant'] })}>{COOLANT_MODES.map(value => <option key={value}>{value}</option>)}</select></Field>
             </div>
             <Field label="Notes"><textarea value={tool.notes} onChange={event => setTool({ ...tool, notes: event.target.value })} /></Field>
-            <button disabled={!user || !tool.manufacturer || (recipe.material === 'Other' && !customMaterial.trim())} onClick={() => {
+            <button disabled={!user || !tool.manufacturer || (tool.coating === 'other' && !tool.coatingCustom.trim()) || (recipe.material === 'Other' && !customMaterial.trim())} onClick={() => {
               const namedTool = { ...tool, name: generatedToolName(tool), units: 'mm' as const };
               const namedRecipe = { ...recipe, material: recipe.material === 'Other' ? customMaterial.trim() : recipe.material };
               void publish({ tool: namedTool, recipe: namedRecipe, addToMyTools: true }).catch(err => setMessage(err.message));
@@ -338,14 +339,14 @@ function ToolDetailsModal({ details, onClose }: { details: LibraryTool | UserToo
         <div className="modalHeader">
           <div>
             <h2 id="tool-details-title">{tool.name}</h2>
-            <p>{tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[tool.cutterMaterial]} · {TOOL_COATING_LABELS[tool.coating]} · {TOOL_TYPE_LABELS[tool.type]} · {tool.diameter} mm · {tool.flutes}F</p>
+            <p>{tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[tool.cutterMaterial]} · {coatingLabel(tool)} · {TOOL_TYPE_LABELS[tool.type]} · {tool.diameter} mm · {tool.flutes}F</p>
           </div>
           <button className="iconButton" title="Close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="detailGrid">
           <div><span>Manufacturer</span><strong>{tool.manufacturer || 'Unbranded'}</strong></div>
           <div><span>Type</span><strong>{CUTTER_MATERIAL_LABELS[tool.cutterMaterial]}</strong></div>
-          <div><span>Coating</span><strong>{TOOL_COATING_LABELS[tool.coating]}</strong></div>
+          <div><span>Coating</span><strong>{coatingLabel(tool)}</strong></div>
           <div><span>Shape</span><strong>{TOOL_TYPE_LABELS[tool.type]}</strong></div>
           <div><span>Diameter</span><strong>{tool.diameter} mm</strong></div>
           <div><span>Flutes</span><strong>{tool.flutes}</strong></div>

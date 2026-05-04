@@ -30,6 +30,7 @@ CREATE TABLE tools (
   manufacturer TEXT NOT NULL DEFAULT '',
   cutter_material TEXT NOT NULL DEFAULT 'carbide' CHECK (cutter_material IN ('carbide', 'hss')),
   coating TEXT NOT NULL DEFAULT 'uncoated' CHECK (coating IN ('dlc', 'uncoated', 'altin', 'altisin', 'other')),
+  coating_custom TEXT NOT NULL DEFAULT '',
   product_url TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT '',
   source TEXT NOT NULL DEFAULT 'manual',

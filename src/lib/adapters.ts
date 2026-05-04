@@ -149,6 +149,7 @@ export function bearSenderToolToPublishInput(tool: BearSenderTool): { tool: Tool
       manufacturer: tool.manufacturer || '',
       cutterMaterial: tool.cutterMaterial || 'carbide',
       coating: 'uncoated',
+      coatingCustom: '',
       productUrl: '',
       notes: tool.notes,
       source: 'bearsender',

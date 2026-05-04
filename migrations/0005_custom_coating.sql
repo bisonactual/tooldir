@@ -1,0 +1,1 @@
+ALTER TABLE tools ADD COLUMN coating_custom TEXT NOT NULL DEFAULT '';

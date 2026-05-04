@@ -114,6 +114,7 @@ function toolFromRow(row: any): Tool {
     manufacturer: row.manufacturer,
     cutterMaterial: row.cutter_material || 'carbide',
     coating: row.coating || 'uncoated',
+    coatingCustom: row.coating_custom || '',
     productUrl: row.product_url,
     notes: row.notes,
     source: row.source,
@@ -262,11 +263,11 @@ async function listTools(request: Request, env: Env): Promise<Response> {
     FROM tools t
     LEFT JOIN recipes r ON r.tool_id = t.id
     LEFT JOIN recipe_votes rv ON rv.recipe_id = r.id
-    WHERE t.is_public = 1 AND (? = '%%' OR t.name LIKE ? OR t.type LIKE ? OR t.manufacturer LIKE ? OR t.cutter_material LIKE ? OR t.coating LIKE ?)
+    WHERE t.is_public = 1 AND (? = '%%' OR t.name LIKE ? OR t.type LIKE ? OR t.manufacturer LIKE ? OR t.cutter_material LIKE ? OR t.coating LIKE ? OR t.coating_custom LIKE ?)
     GROUP BY t.id, r.id
     ORDER BY vote_count DESC, t.name ASC
     LIMIT 100
-  `).bind(user?.id || '', q, q, q, q, q, q).all<any>();
+  `).bind(user?.id || '', q, q, q, q, q, q, q).all<any>();
 
   const map = new Map<string, LibraryTool>();
   for (const row of rows.results || []) {
@@ -345,9 +346,9 @@ async function publishTool(request: Request, env: Env): Promise<Response> {
   const recipeId = id('rcp');
   const recipe = input.recipe;
   await env.DB.batch([
-    env.DB.prepare(`INSERT INTO tools (id, owner_user_id, name, type, units, diameter, flutes, v_angle, manufacturer, cutter_material, coating, product_url, notes, source, is_public)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .bind(toolId, user.id, toolName, input.tool.type, 'mm', input.tool.diameter, input.tool.flutes, input.tool.vAngle || 0, input.tool.manufacturer || '', input.tool.cutterMaterial || 'carbide', input.tool.coating || 'uncoated', input.tool.productUrl || '', input.tool.notes || '', input.tool.source || 'manual', input.tool.isPublic ? 1 : 0),
+    env.DB.prepare(`INSERT INTO tools (id, owner_user_id, name, type, units, diameter, flutes, v_angle, manufacturer, cutter_material, coating, coating_custom, product_url, notes, source, is_public)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(toolId, user.id, toolName, input.tool.type, 'mm', input.tool.diameter, input.tool.flutes, input.tool.vAngle || 0, input.tool.manufacturer || '', input.tool.cutterMaterial || 'carbide', input.tool.coating || 'uncoated', input.tool.coating === 'other' ? input.tool.coatingCustom || '' : '', input.tool.productUrl || '', input.tool.notes || '', input.tool.source || 'manual', input.tool.isPublic ? 1 : 0),
     env.DB.prepare(`INSERT INTO recipes (id, tool_id, owner_user_id, material, operation, rpm, feed, plunge, stepdown, stepover, coolant, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(recipeId, toolId, user.id, recipe.material || 'Unspecified', recipe.operation || 'Default', recipe.rpm || 0, recipe.feed || 0, recipe.plunge || 0, recipe.stepdown || 0, recipe.stepover || 0, recipe.coolant || 'off', recipe.notes || ''),

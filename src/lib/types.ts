@@ -31,6 +31,7 @@ export interface Tool {
   manufacturer: string;
   cutterMaterial: CutterMaterial;
   coating: ToolCoating;
+  coatingCustom: string;
   productUrl: string;
   notes: string;
   source: 'manual' | 'fusion' | 'bearsender';
@@ -78,6 +79,7 @@ export interface ToolInput {
   manufacturer: string;
   cutterMaterial: CutterMaterial;
   coating: ToolCoating;
+  coatingCustom: string;
   productUrl: string;
   notes: string;
   source: Tool['source'];
@@ -161,11 +163,15 @@ export const TOOL_COATING_LABELS: Record<ToolCoating, string> = {
   other: 'Other',
 };
 
-export function generatedToolName(tool: Pick<ToolInput, 'manufacturer' | 'cutterMaterial' | 'coating' | 'type' | 'diameter' | 'flutes'>): string {
+export function coatingLabel(tool: Pick<ToolInput, 'coating' | 'coatingCustom'> | Pick<Tool, 'coating' | 'coatingCustom'>): string {
+  return tool.coating === 'other' && tool.coatingCustom.trim() ? tool.coatingCustom.trim() : TOOL_COATING_LABELS[tool.coating];
+}
+
+export function generatedToolName(tool: Pick<ToolInput, 'manufacturer' | 'cutterMaterial' | 'coating' | 'coatingCustom' | 'type' | 'diameter' | 'flutes'>): string {
   const parts = [
     tool.manufacturer.trim(),
     CUTTER_MATERIAL_LABELS[tool.cutterMaterial],
-    TOOL_COATING_LABELS[tool.coating],
+    coatingLabel(tool),
     `${tool.diameter || 0} mm`,
     `${tool.flutes}F`,
     TOOL_TYPE_LABELS[tool.type],
@@ -184,6 +190,7 @@ export function emptyToolInput(): ToolInput {
     manufacturer: '',
     cutterMaterial: 'carbide',
     coating: 'uncoated',
+    coatingCustom: '',
     productUrl: '',
     notes: '',
     source: 'manual',
