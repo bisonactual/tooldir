@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Download, Github, Import, Library, LogOut, Plus, Search, ThumbsUp, Upload, User } from 'lucide-react';
 import { bearSenderToolToPublishInput, exportBearSenderPayload, exportFusionPayload, parseToolLibraryJson } from './lib/adapters';
-import { COOLANT_MODES, emptyRecipeInput, emptyToolInput, TOOL_TYPES } from './lib/types';
+import { COOLANT_MODES, CUTTER_MATERIALS, emptyRecipeInput, emptyToolInput, TOOL_TYPES } from './lib/types';
 import type { LibraryTool, PublishToolInput, Recipe, RecipeInput, ToolInput, UserProfile, UserTool } from './lib/types';
 import './styles.css';
 
@@ -139,7 +139,7 @@ function App() {
       <header className="topbar">
         <div>
           <h1>PrintNC Tool Library</h1>
-          <p>Shared cutters and proven recipes for router-class CNC work.</p>
+          <p>Cutters and Recipes for the PrintNC community</p>
         </div>
         <div className="auth">
           {user ? (
@@ -162,7 +162,7 @@ function App() {
       <section className="toolbar">
         <label className="search">
           <Search size={18} />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search tool, type, manufacturer" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search tool, shape, manufacturer, carbide, HSS" />
         </label>
         <label className={`button ${user ? '' : 'disabled'}`}>
           <Import size={18} />
@@ -186,7 +186,7 @@ function App() {
                 <div className="cardHeader">
                   <div>
                     <h3>{entry.name}</h3>
-                    <p>{entry.type} · {entry.diameter}{entry.units} · {entry.flutes}F</p>
+                    <p>{entry.manufacturer || 'Unbranded'} · {entry.cutterMaterial.toUpperCase()} · {entry.type} · {entry.diameter} mm · {entry.flutes}F</p>
                   </div>
                   <button disabled={!user} onClick={() => void addToMine(entry, topRecipeByTool.get(entry.id)?.id).catch(err => setMessage(err.message))}><Plus size={16} /> My list</button>
                 </div>
@@ -195,7 +195,7 @@ function App() {
                     <div className="recipe" key={item.id}>
                       <div>
                         <strong>{item.material}</strong>
-                        <span>{item.operation} · {item.rpm} rpm · {item.feed} feed · {item.stepdown} DOC · {item.stepover}% WOC</span>
+                        <span>{item.operation} · {item.rpm} rpm · {item.feed} mm/min · {item.stepdown} mm DOC · {item.stepover}% WOC</span>
                       </div>
                       <button className={item.viewerHasVoted ? 'voted' : ''} disabled={!user} onClick={() => void toggleVote(item).catch(err => setMessage(err.message))}>
                         <ThumbsUp size={16} /> {item.voteCount}
@@ -213,17 +213,18 @@ function App() {
             <h2>Publish Tool</h2>
             <div className="formGrid">
               <Field label="Name"><input value={tool.name} onChange={event => setTool({ ...tool, name: event.target.value })} placeholder="6mm 2F end mill" /></Field>
-              <Field label="Type"><select value={tool.type} onChange={event => setTool({ ...tool, type: event.target.value as ToolInput['type'] })}>{TOOL_TYPES.map(value => <option key={value}>{value}</option>)}</select></Field>
-              <Field label="Units"><select value={tool.units} onChange={event => setTool({ ...tool, units: event.target.value as ToolInput['units'] })}><option>mm</option><option>in</option></select></Field>
-              <Field label="Diameter"><NumberInput value={tool.diameter} step={0.001} onChange={value => setTool({ ...tool, diameter: value })} /></Field>
+              <Field label="Manufacturer"><input value={tool.manufacturer} onChange={event => setTool({ ...tool, manufacturer: event.target.value })} placeholder="Datron, Amana, Sorotec" /></Field>
+              <Field label="Shape"><select value={tool.type} onChange={event => setTool({ ...tool, type: event.target.value as ToolInput['type'] })}>{TOOL_TYPES.map(value => <option key={value}>{value}</option>)}</select></Field>
+              <Field label="Type"><select value={tool.cutterMaterial} onChange={event => setTool({ ...tool, cutterMaterial: event.target.value as ToolInput['cutterMaterial'] })}>{CUTTER_MATERIALS.map(value => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></Field>
+              <Field label="Diameter mm"><NumberInput value={tool.diameter} step={0.001} onChange={value => setTool({ ...tool, diameter: value, units: 'mm' })} /></Field>
               <Field label="Flutes"><NumberInput value={tool.flutes} onChange={value => setTool({ ...tool, flutes: value })} /></Field>
               <Field label="V angle"><NumberInput value={tool.vAngle} step={0.1} onChange={value => setTool({ ...tool, vAngle: value })} /></Field>
               <Field label="Material"><input value={recipe.material} onChange={event => setRecipe({ ...recipe, material: event.target.value })} /></Field>
               <Field label="Operation"><input value={recipe.operation} onChange={event => setRecipe({ ...recipe, operation: event.target.value })} /></Field>
               <Field label="RPM"><NumberInput value={recipe.rpm} step={100} onChange={value => setRecipe({ ...recipe, rpm: value })} /></Field>
-              <Field label="Feed"><NumberInput value={recipe.feed} step={10} onChange={value => setRecipe({ ...recipe, feed: value })} /></Field>
-              <Field label="Plunge"><NumberInput value={recipe.plunge} step={10} onChange={value => setRecipe({ ...recipe, plunge: value })} /></Field>
-              <Field label="Stepdown"><NumberInput value={recipe.stepdown} step={0.01} onChange={value => setRecipe({ ...recipe, stepdown: value })} /></Field>
+              <Field label="Feed mm/min"><NumberInput value={recipe.feed} step={10} onChange={value => setRecipe({ ...recipe, feed: value })} /></Field>
+              <Field label="Plunge mm/min"><NumberInput value={recipe.plunge} step={10} onChange={value => setRecipe({ ...recipe, plunge: value })} /></Field>
+              <Field label="Stepdown mm"><NumberInput value={recipe.stepdown} step={0.01} onChange={value => setRecipe({ ...recipe, stepdown: value })} /></Field>
               <Field label="Stepover %"><NumberInput value={recipe.stepover} step={1} onChange={value => setRecipe({ ...recipe, stepover: value })} /></Field>
               <Field label="Coolant"><select value={recipe.coolant} onChange={event => setRecipe({ ...recipe, coolant: event.target.value as RecipeInput['coolant'] })}>{COOLANT_MODES.map(value => <option key={value}>{value}</option>)}</select></Field>
             </div>
@@ -237,7 +238,7 @@ function App() {
               {myTools.map(item => (
                 <div className="myTool" key={item.tool.id}>
                   <span>T{item.toolNumber}</span>
-                  <div><strong>{item.tool.name}</strong><small>{item.recipe ? `${item.recipe.material}, ${item.recipe.feed} feed` : 'No recipe selected'}</small></div>
+                  <div><strong>{item.tool.name}</strong><small>{item.recipe ? `${item.recipe.material}, ${item.recipe.feed} mm/min` : 'No recipe selected'}</small></div>
                 </div>
               ))}
               {!myTools.length && <p className="empty">{user ? 'No tools selected.' : 'Sign in to keep a personal list.'}</p>}

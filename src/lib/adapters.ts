@@ -29,7 +29,8 @@ function normalizeType(value: unknown): ToolType {
 }
 
 function normalizeUnits(value: unknown): ToolUnits {
-  return value === 'in' || value === 'inches' ? 'in' : 'mm';
+  void value;
+  return 'mm';
 }
 
 function normalizeCoolant(value: unknown): ToolCoolant {
@@ -131,6 +132,7 @@ export function bearSenderToolToPublishInput(tool: BearSenderTool): { tool: Tool
       flutes: tool.flutes,
       vAngle: tool.vAngle,
       manufacturer: '',
+      cutterMaterial: 'carbide',
       productUrl: '',
       notes: tool.notes,
       source: 'bearsender',
@@ -178,8 +180,8 @@ export function exportBearSenderPayload(userTools: UserTool[]): BearSenderPayloa
 }
 
 export function fusionToolFromBearSender(tool: BearSenderTool): any {
-  const unitName = tool.units === 'in' ? 'inches' : 'millimeters';
-  const unitSuffix = tool.units === 'in' ? 'in' : 'mm';
+  const unitName = 'millimeters';
+  const unitSuffix = 'mm';
   const diameter = Math.max(tool.diameter || 0, 0.001);
   const lengthBelow = Math.max(diameter * 5, diameter + 1);
   const fluteLength = Math.max(diameter * 3, diameter);
@@ -233,9 +235,9 @@ export function fusionToolFromBearSender(tool: BearSenderTool): any {
       presets: [{
         description: 'PrintNC Tool Library default',
         expressions: {
-          tool_feedCutting: `${tool.defaultFeed} ${tool.units === 'in' ? 'in/min' : 'mm/min'}`,
-          tool_feedPlunge: `${tool.defaultPlunge} ${tool.units === 'in' ? 'in/min' : 'mm/min'}`,
-          tool_feedRamp: `${tool.defaultPlunge} ${tool.units === 'in' ? 'in/min' : 'mm/min'}`,
+          tool_feedCutting: `${tool.defaultFeed} mm/min`,
+          tool_feedPlunge: `${tool.defaultPlunge} mm/min`,
+          tool_feedRamp: `${tool.defaultPlunge} mm/min`,
           tool_spindleSpeed: `${tool.defaultRpm} rpm`,
           tool_stepdown: `${tool.stepdown || 0} ${unitSuffix}`,
           tool_stepover: `tool_diameter * ${stepoverFraction.toFixed(4)}`,

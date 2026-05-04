@@ -1,5 +1,6 @@
-export type ToolUnits = 'mm' | 'in';
+export type ToolUnits = 'mm';
 export type ToolCoolant = 'off' | 'flood' | 'mist';
+export type CutterMaterial = 'carbide' | 'hss';
 export type ToolType =
   | 'endmill'
   | 'ballmill'
@@ -26,6 +27,7 @@ export interface Tool {
   flutes: number;
   vAngle: number;
   manufacturer: string;
+  cutterMaterial: CutterMaterial;
   productUrl: string;
   notes: string;
   source: 'manual' | 'fusion' | 'bearsender';
@@ -71,6 +73,7 @@ export interface ToolInput {
   flutes: number;
   vAngle: number;
   manufacturer: string;
+  cutterMaterial: CutterMaterial;
   productUrl: string;
   notes: string;
   source: Tool['source'];
@@ -122,6 +125,7 @@ export interface BearSenderPayload {
 
 export const TOOL_TYPES: ToolType[] = ['endmill', 'ballmill', 'vbit', 'drill', 'surfacing', 'engraving', 'chamfer', 'other'];
 export const COOLANT_MODES: ToolCoolant[] = ['off', 'flood', 'mist'];
+export const CUTTER_MATERIALS: CutterMaterial[] = ['carbide', 'hss'];
 
 export function emptyToolInput(): ToolInput {
   return {
@@ -132,6 +136,7 @@ export function emptyToolInput(): ToolInput {
     flutes: 2,
     vAngle: 0,
     manufacturer: '',
+    cutterMaterial: 'carbide',
     productUrl: '',
     notes: '',
     source: 'manual',
