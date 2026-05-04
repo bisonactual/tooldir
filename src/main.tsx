@@ -11,6 +11,14 @@ const SESSION_STORAGE_KEY = 'printnc-tool-library-session';
 const apiUrl = (path: string) => `${API_ORIGIN}${path}`;
 const authUrl = (path: string) => `${API_ORIGIN}${path}`;
 const sessionToken = () => localStorage.getItem(SESSION_STORAGE_KEY);
+const captureSessionFromUrl = () => {
+  const url = new URL(window.location.href);
+  const session = url.searchParams.get('session');
+  if (!session) return;
+  localStorage.setItem(SESSION_STORAGE_KEY, session);
+  url.searchParams.delete('session');
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+};
 const authHeaders = (body?: unknown): HeadersInit => {
   const token = sessionToken();
   return {
@@ -63,15 +71,6 @@ function App() {
   const [message, setMessage] = useState('');
   const [tool, setTool] = useState<ToolInput>(emptyToolInput());
   const [recipe, setRecipe] = useState<RecipeInput>(emptyRecipeInput());
-
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const session = url.searchParams.get('session');
-    if (!session) return;
-    localStorage.setItem(SESSION_STORAGE_KEY, session);
-    url.searchParams.delete('session');
-    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-  }, []);
 
   async function refresh() {
     const [me, lib] = await Promise.all([
@@ -250,4 +249,5 @@ function App() {
   );
 }
 
+captureSessionFromUrl();
 createRoot(document.getElementById('root')!).render(<App />);
