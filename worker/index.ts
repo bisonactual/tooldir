@@ -1,3 +1,4 @@
+import { generatedToolName } from '../src/lib/types';
 import type { LibraryTool, PublishToolInput, Recipe, Tool, UserProfile, UserTool } from '../src/lib/types';
 
 interface Env {
@@ -331,14 +332,15 @@ async function publishTool(request: Request, env: Env): Promise<Response> {
   const user = await requireUser(request, env);
   if (user instanceof Response) return user;
   const input = await request.json<PublishToolInput>();
-  if (!input.tool?.name) return bad('Tool name is required.');
+  if (!input.tool) return bad('Tool details are required.');
+  const toolName = input.tool.name?.trim() || generatedToolName(input.tool);
   const toolId = id('tool');
   const recipeId = id('rcp');
   const recipe = input.recipe;
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO tools (id, owner_user_id, name, type, units, diameter, flutes, v_angle, manufacturer, cutter_material, product_url, notes, source, is_public)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .bind(toolId, user.id, input.tool.name, input.tool.type, 'mm', input.tool.diameter, input.tool.flutes, input.tool.vAngle || 0, input.tool.manufacturer || '', input.tool.cutterMaterial || 'carbide', input.tool.productUrl || '', input.tool.notes || '', input.tool.source || 'manual', input.tool.isPublic ? 1 : 0),
+      .bind(toolId, user.id, toolName, input.tool.type, 'mm', input.tool.diameter, input.tool.flutes, input.tool.vAngle || 0, input.tool.manufacturer || '', input.tool.cutterMaterial || 'carbide', input.tool.productUrl || '', input.tool.notes || '', input.tool.source || 'manual', input.tool.isPublic ? 1 : 0),
     env.DB.prepare(`INSERT INTO recipes (id, tool_id, owner_user_id, material, operation, rpm, feed, plunge, stepdown, stepover, coolant, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(recipeId, toolId, user.id, recipe.material || 'Unspecified', recipe.operation || 'Default', recipe.rpm || 0, recipe.feed || 0, recipe.plunge || 0, recipe.stepdown || 0, recipe.stepover || 0, recipe.coolant || 'off', recipe.notes || ''),

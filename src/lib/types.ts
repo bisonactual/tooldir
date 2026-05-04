@@ -126,6 +126,35 @@ export interface BearSenderPayload {
 export const TOOL_TYPES: ToolType[] = ['endmill', 'ballmill', 'vbit', 'drill', 'surfacing', 'engraving', 'chamfer', 'other'];
 export const COOLANT_MODES: ToolCoolant[] = ['off', 'flood', 'mist'];
 export const CUTTER_MATERIALS: CutterMaterial[] = ['carbide', 'hss'];
+export const WORK_MATERIALS = ['Wood', 'Plastic', 'Brass', 'Bronze', 'Aluminium', 'Mild Steel', 'Other'] as const;
+export const FLUTE_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
+export const TOOL_TYPE_LABELS: Record<ToolType, string> = {
+  endmill: 'End Mill',
+  ballmill: 'Ball Mill',
+  vbit: 'V-Bit',
+  drill: 'Drill',
+  surfacing: 'Surfacing',
+  engraving: 'Engraving',
+  chamfer: 'Chamfer',
+  other: 'Other',
+};
+
+export const CUTTER_MATERIAL_LABELS: Record<CutterMaterial, string> = {
+  carbide: 'Carbide',
+  hss: 'HSS',
+};
+
+export function generatedToolName(tool: Pick<ToolInput, 'manufacturer' | 'cutterMaterial' | 'type' | 'diameter' | 'flutes'>): string {
+  const parts = [
+    tool.manufacturer.trim(),
+    CUTTER_MATERIAL_LABELS[tool.cutterMaterial],
+    `${tool.diameter || 0} mm`,
+    `${tool.flutes}F`,
+    TOOL_TYPE_LABELS[tool.type],
+  ].filter(Boolean);
+  return parts.join(' ');
+}
 
 export function emptyToolInput(): ToolInput {
   return {

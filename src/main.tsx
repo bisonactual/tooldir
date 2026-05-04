@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Download, Github, Import, Library, LogOut, Plus, Search, ThumbsUp, Upload, User } from 'lucide-react';
 import { bearSenderToolToPublishInput, exportBearSenderPayload, exportFusionPayload, parseToolLibraryJson } from './lib/adapters';
-import { COOLANT_MODES, CUTTER_MATERIALS, emptyRecipeInput, emptyToolInput, TOOL_TYPES } from './lib/types';
+import { COOLANT_MODES, CUTTER_MATERIAL_LABELS, CUTTER_MATERIALS, FLUTE_COUNTS, generatedToolName, emptyRecipeInput, emptyToolInput, TOOL_TYPE_LABELS, TOOL_TYPES, WORK_MATERIALS } from './lib/types';
 import type { LibraryTool, PublishToolInput, Recipe, RecipeInput, ToolInput, UserProfile, UserTool } from './lib/types';
 import './styles.css';
 
@@ -71,6 +71,7 @@ function App() {
   const [message, setMessage] = useState('');
   const [tool, setTool] = useState<ToolInput>(emptyToolInput());
   const [recipe, setRecipe] = useState<RecipeInput>(emptyRecipeInput());
+  const [customMaterial, setCustomMaterial] = useState('');
 
   async function refresh() {
     const [me, lib] = await Promise.all([
@@ -101,6 +102,7 @@ function App() {
     setMessage('Published tool and recipe.');
     setTool(emptyToolInput());
     setRecipe(emptyRecipeInput());
+    setCustomMaterial('');
     await refresh();
   }
 
@@ -186,7 +188,7 @@ function App() {
                 <div className="cardHeader">
                   <div>
                     <h3>{entry.name}</h3>
-                    <p>{entry.manufacturer || 'Unbranded'} · {entry.cutterMaterial.toUpperCase()} · {entry.type} · {entry.diameter} mm · {entry.flutes}F</p>
+                    <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
                   </div>
                   <button disabled={!user} onClick={() => void addToMine(entry, topRecipeByTool.get(entry.id)?.id).catch(err => setMessage(err.message))}><Plus size={16} /> My list</button>
                 </div>
@@ -212,14 +214,14 @@ function App() {
           <section className="panel">
             <h2>Publish Tool</h2>
             <div className="formGrid">
-              <Field label="Name"><input value={tool.name} onChange={event => setTool({ ...tool, name: event.target.value })} placeholder="6mm 2F end mill" /></Field>
               <Field label="Manufacturer"><input value={tool.manufacturer} onChange={event => setTool({ ...tool, manufacturer: event.target.value })} placeholder="Datron, Amana, Sorotec" /></Field>
-              <Field label="Shape"><select value={tool.type} onChange={event => setTool({ ...tool, type: event.target.value as ToolInput['type'] })}>{TOOL_TYPES.map(value => <option key={value}>{value}</option>)}</select></Field>
-              <Field label="Type"><select value={tool.cutterMaterial} onChange={event => setTool({ ...tool, cutterMaterial: event.target.value as ToolInput['cutterMaterial'] })}>{CUTTER_MATERIALS.map(value => <option key={value} value={value}>{value.toUpperCase()}</option>)}</select></Field>
+              <Field label="Shape"><select value={tool.type} onChange={event => setTool({ ...tool, type: event.target.value as ToolInput['type'] })}>{TOOL_TYPES.map(value => <option key={value} value={value}>{TOOL_TYPE_LABELS[value]}</option>)}</select></Field>
+              <Field label="Type"><select value={tool.cutterMaterial} onChange={event => setTool({ ...tool, cutterMaterial: event.target.value as ToolInput['cutterMaterial'] })}>{CUTTER_MATERIALS.map(value => <option key={value} value={value}>{CUTTER_MATERIAL_LABELS[value]}</option>)}</select></Field>
               <Field label="Diameter mm"><NumberInput value={tool.diameter} step={0.001} onChange={value => setTool({ ...tool, diameter: value, units: 'mm' })} /></Field>
-              <Field label="Flutes"><NumberInput value={tool.flutes} onChange={value => setTool({ ...tool, flutes: value })} /></Field>
+              <Field label="Flutes"><select value={tool.flutes} onChange={event => setTool({ ...tool, flutes: Number(event.target.value) })}>{FLUTE_COUNTS.map(value => <option key={value} value={value}>{value}</option>)}</select></Field>
               <Field label="V angle"><NumberInput value={tool.vAngle} step={0.1} onChange={value => setTool({ ...tool, vAngle: value })} /></Field>
-              <Field label="Material"><input value={recipe.material} onChange={event => setRecipe({ ...recipe, material: event.target.value })} /></Field>
+              <Field label="Work Material"><select value={WORK_MATERIALS.includes(recipe.material as any) ? recipe.material : 'Other'} onChange={event => setRecipe({ ...recipe, material: event.target.value })}>{WORK_MATERIALS.map(value => <option key={value} value={value}>{value}</option>)}</select></Field>
+              {recipe.material === 'Other' && <Field label="Specify Material"><input value={customMaterial} onChange={event => setCustomMaterial(event.target.value)} placeholder="Composite, foam, copper" /></Field>}
               <Field label="Operation"><input value={recipe.operation} onChange={event => setRecipe({ ...recipe, operation: event.target.value })} /></Field>
               <Field label="RPM"><NumberInput value={recipe.rpm} step={100} onChange={value => setRecipe({ ...recipe, rpm: value })} /></Field>
               <Field label="Feed mm/min"><NumberInput value={recipe.feed} step={10} onChange={value => setRecipe({ ...recipe, feed: value })} /></Field>
@@ -229,7 +231,11 @@ function App() {
               <Field label="Coolant"><select value={recipe.coolant} onChange={event => setRecipe({ ...recipe, coolant: event.target.value as RecipeInput['coolant'] })}>{COOLANT_MODES.map(value => <option key={value}>{value}</option>)}</select></Field>
             </div>
             <Field label="Notes"><textarea value={tool.notes} onChange={event => setTool({ ...tool, notes: event.target.value })} /></Field>
-            <button disabled={!user || !tool.name} onClick={() => void publish({ tool, recipe, addToMyTools: true }).catch(err => setMessage(err.message))}><Upload size={18} /> Publish</button>
+            <button disabled={!user || !tool.manufacturer || (recipe.material === 'Other' && !customMaterial.trim())} onClick={() => {
+              const namedTool = { ...tool, name: generatedToolName(tool), units: 'mm' as const };
+              const namedRecipe = { ...recipe, material: recipe.material === 'Other' ? customMaterial.trim() : recipe.material };
+              void publish({ tool: namedTool, recipe: namedRecipe, addToMyTools: true }).catch(err => setMessage(err.message));
+            }}><Upload size={18} /> Publish</button>
           </section>
 
           <section className="panel">
