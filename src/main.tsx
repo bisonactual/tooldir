@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Download, FileDown, Github, Library, LogOut, Plus, Search, ThumbsUp, Upload, UploadCloud, User } from 'lucide-react';
+import { Download, FileDown, Github, Library, List, LogOut, Plus, Search, ThumbsUp, Trash2, Upload, UploadCloud, User, X } from 'lucide-react';
 import { bearSenderToolToPublishInput, exportBearSenderPayload, exportFusionPayload } from './lib/adapters';
 import { parseToolLibraryFile } from './lib/importers';
 import { COOLANT_MODES, CUTTER_MATERIAL_LABELS, CUTTER_MATERIALS, FLUTE_COUNTS, generatedToolName, emptyRecipeInput, emptyToolInput, TOOL_COATING_LABELS, TOOL_COATINGS, TOOL_TYPE_LABELS, TOOL_TYPES, WORK_MATERIALS } from './lib/types';
@@ -69,6 +69,8 @@ function App() {
   const [library, setLibrary] = useState<LibraryTool[]>([]);
   const [myTools, setMyTools] = useState<UserTool[]>([]);
   const [query, setQuery] = useState('');
+  const [myQuery, setMyQuery] = useState('');
+  const [view, setView] = useState<'library' | 'mine'>('library');
   const [message, setMessage] = useState('');
   const [tool, setTool] = useState<ToolInput>(emptyToolInput());
   const [recipe, setRecipe] = useState<RecipeInput>(emptyRecipeInput());
@@ -130,6 +132,33 @@ function App() {
     await refresh();
   }
 
+  async function deleteTool(entry: LibraryTool) {
+    if (!window.confirm(`Delete ${entry.name}?`)) return;
+    await api.send(`/api/tools/${entry.id}`, 'DELETE');
+    setMessage(`Deleted ${entry.name}.`);
+    await refresh();
+  }
+
+  async function removeMyTool(item: UserTool) {
+    await api.send(`/api/my/tools/${item.tool.id}`, 'DELETE');
+    setMessage(`Removed ${item.tool.name} from your tools.`);
+    await refresh();
+  }
+
+  const filteredMyTools = myTools.filter(item => {
+    const q = myQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [
+      item.tool.name,
+      item.tool.manufacturer,
+      TOOL_TYPE_LABELS[item.tool.type],
+      CUTTER_MATERIAL_LABELS[item.tool.cutterMaterial],
+      TOOL_COATING_LABELS[item.tool.coating],
+      item.recipe?.material || '',
+      item.recipe?.operation || '',
+    ].some(value => value.toLowerCase().includes(q));
+  });
+
   function logout() {
     localStorage.removeItem(SESSION_STORAGE_KEY);
     setUser(null);
@@ -162,11 +191,23 @@ function App() {
 
       {message && <button className="notice" onClick={() => setMessage('')}>{message}</button>}
 
+      <nav className="tabs">
+        <button className={view === 'library' ? 'active' : ''} onClick={() => setView('library')}><Library size={18} /> Public Library</button>
+        <button className={view === 'mine' ? 'active' : ''} onClick={() => setView('mine')} disabled={!user}><List size={18} /> My Tools</button>
+      </nav>
+
       <section className="toolbar">
-        <label className="search">
-          <Search size={18} />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search tool, shape, manufacturer, carbide, HSS, coating" />
-        </label>
+        {view === 'library' ? (
+          <label className="search">
+            <Search size={18} />
+            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search tool, shape, manufacturer, carbide, HSS, coating" />
+          </label>
+        ) : (
+          <label className="search">
+            <Search size={18} />
+            <input value={myQuery} onChange={event => setMyQuery(event.target.value)} placeholder="Search my tools" />
+          </label>
+        )}
         <label className={`button ${user ? '' : 'disabled'}`}>
           <UploadCloud size={18} />
           Import Fusion/BearSender
@@ -181,35 +222,68 @@ function App() {
       </section>
 
       <div className="layout">
-        <section>
-          <div className="sectionTitle"><Library size={20} /><h2>Public Library</h2></div>
-          <div className="toolGrid">
-            {library.map(entry => (
-              <article className="toolCard" key={entry.id}>
-                <div className="cardHeader">
-                  <div>
-                    <h3>{entry.name}</h3>
-                    <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_COATING_LABELS[entry.coating]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
-                  </div>
-                  <button disabled={!user} onClick={() => void addToMine(entry, topRecipeByTool.get(entry.id)?.id).catch(err => setMessage(err.message))}><Plus size={16} /> My list</button>
-                </div>
-                <div className="recipes">
-                  {entry.recipes.length ? entry.recipes.map(item => (
-                    <div className="recipe" key={item.id}>
-                      <div>
-                        <strong>{item.material}</strong>
-                        <span>{item.operation} · {item.rpm} rpm · {item.feed} mm/min · {item.stepdown} mm DOC · {item.stepover}% WOC</span>
-                      </div>
-                      <button className={item.viewerHasVoted ? 'voted' : ''} disabled={!user} onClick={() => void toggleVote(item).catch(err => setMessage(err.message))}>
-                        <ThumbsUp size={16} /> {item.voteCount}
-                      </button>
+        {view === 'library' ? (
+          <section>
+            <div className="sectionTitle"><Library size={20} /><h2>Public Library</h2></div>
+            <div className="toolGrid">
+              {library.map(entry => (
+                <article className="toolCard" key={entry.id}>
+                  <div className="cardHeader">
+                    <div>
+                      <h3>{entry.name}</h3>
+                      <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_COATING_LABELS[entry.coating]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
                     </div>
-                  )) : <p className="empty">No recipes yet.</p>}
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+                    <div className="cardActions">
+                      {user?.isAdmin && <button className="iconButton danger" title="Delete tool" onClick={() => void deleteTool(entry).catch(err => setMessage(err.message))}><Trash2 size={16} /></button>}
+                      <button disabled={!user} onClick={() => void addToMine(entry, topRecipeByTool.get(entry.id)?.id).catch(err => setMessage(err.message))}><Plus size={16} /> My list</button>
+                    </div>
+                  </div>
+                  <div className="recipes">
+                    {entry.recipes.length ? entry.recipes.map(item => (
+                      <div className="recipe" key={item.id}>
+                        <div>
+                          <strong>{item.material}</strong>
+                          <span>{item.operation} · {item.rpm} rpm · {item.feed} mm/min · {item.stepdown} mm DOC · {item.stepover}% WOC</span>
+                        </div>
+                        <button className={item.viewerHasVoted ? 'voted' : ''} disabled={!user} onClick={() => void toggleVote(item).catch(err => setMessage(err.message))}>
+                          <ThumbsUp size={16} /> {item.voteCount}
+                        </button>
+                      </div>
+                    )) : <p className="empty">No recipes yet.</p>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section>
+            <div className="sectionTitle"><List size={20} /><h2>My Tools</h2></div>
+            <div className="toolGrid">
+              {filteredMyTools.map(item => (
+                <article className="toolCard" key={item.tool.id}>
+                  <div className="cardHeader">
+                    <div>
+                      <h3>T{item.toolNumber} · {item.tool.name}</h3>
+                      <p>{item.tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[item.tool.cutterMaterial]} · {TOOL_COATING_LABELS[item.tool.coating]} · {TOOL_TYPE_LABELS[item.tool.type]} · {item.tool.diameter} mm · {item.tool.flutes}F</p>
+                    </div>
+                    <button className="iconButton danger" title="Remove from my tools" onClick={() => void removeMyTool(item).catch(err => setMessage(err.message))}><X size={16} /></button>
+                  </div>
+                  {item.recipe ? (
+                    <div className="recipes">
+                      <div className="recipe">
+                        <div>
+                          <strong>{item.recipe.material}</strong>
+                          <span>{item.recipe.operation} · {item.recipe.rpm} rpm · {item.recipe.feed} mm/min · {item.recipe.stepdown} mm DOC · {item.recipe.stepover}% WOC</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : <p className="empty">No recipe selected.</p>}
+                </article>
+              ))}
+              {!filteredMyTools.length && <p className="empty">{myTools.length ? 'No matching tools.' : 'No tools selected.'}</p>}
+            </div>
+          </section>
+        )}
 
         <aside>
           <section className="panel">
@@ -240,18 +314,6 @@ function App() {
             }}><Upload size={18} /> Publish</button>
           </section>
 
-          <section className="panel">
-            <h2>My Tools</h2>
-            <div className="myList">
-              {myTools.map(item => (
-                <div className="myTool" key={item.tool.id}>
-                  <span>T{item.toolNumber}</span>
-                  <div><strong>{item.tool.name}</strong><small>{item.recipe ? `${item.recipe.material}, ${item.recipe.feed} mm/min` : 'No recipe selected'}</small></div>
-                </div>
-              ))}
-              {!myTools.length && <p className="empty">{user ? 'No tools selected.' : 'Sign in to keep a personal list.'}</p>}
-            </div>
-          </section>
         </aside>
       </div>
     </main>

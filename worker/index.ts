@@ -68,13 +68,19 @@ async function currentUser(request: Request, env: Env): Promise<UserProfile | nu
   const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
   const userId = await verifySignedValue(env, bearer) || await verifySignedValue(env, parseCookies(request)[cookieName(env)]);
   if (!userId) return null;
-  const row = await env.DB.prepare('SELECT id, display_name, avatar_url FROM users WHERE id = ?').bind(userId).first<any>();
-  return row ? { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url } : null;
+  const row = await env.DB.prepare('SELECT id, display_name, avatar_url, is_admin FROM users WHERE id = ?').bind(userId).first<any>();
+  return row ? { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url, isAdmin: Boolean(row.is_admin) } : null;
 }
 
 async function requireUser(request: Request, env: Env): Promise<UserProfile | Response> {
   const user = await currentUser(request, env);
   return user || bad('Sign in required.', 401);
+}
+
+async function requireAdmin(request: Request, env: Env): Promise<UserProfile | Response> {
+  const user = await requireUser(request, env);
+  if (user instanceof Response) return user;
+  return user.isAdmin ? user : bad('Admin access required.', 403);
 }
 
 function setSessionCookie(env: Env, userId: string, signed: string): string {
@@ -350,6 +356,13 @@ async function publishTool(request: Request, env: Env): Promise<Response> {
   return json({ toolId, recipeId }, { status: 201 });
 }
 
+async function deleteTool(request: Request, env: Env, toolId: string): Promise<Response> {
+  const user = await requireAdmin(request, env);
+  if (user instanceof Response) return user;
+  await env.DB.prepare('DELETE FROM tools WHERE id = ?').bind(toolId).run();
+  return json({ ok: true });
+}
+
 async function addUserToolRow(env: Env, userId: string, toolId: string, recipeId: string | null | undefined, toolNumber?: number): Promise<void> {
   const next = toolNumber || ((await env.DB.prepare('SELECT COALESCE(MAX(tool_number), 0) + 1 AS next FROM user_tools WHERE user_id = ?').bind(userId).first<any>())?.next ?? 1);
   await env.DB.prepare('INSERT INTO user_tools (user_id, tool_id, recipe_id, tool_number) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, tool_id) DO UPDATE SET recipe_id = excluded.recipe_id, tool_number = excluded.tool_number, updated_at = CURRENT_TIMESTAMP')
@@ -363,6 +376,13 @@ async function addToMyTools(request: Request, env: Env): Promise<Response> {
   const body = await request.json<{ toolId: string; recipeId?: string; toolNumber?: number }>();
   if (!body.toolId) return bad('toolId is required.');
   await addUserToolRow(env, user.id, body.toolId, body.recipeId, body.toolNumber);
+  return json({ ok: true });
+}
+
+async function removeFromMyTools(request: Request, env: Env, toolId: string): Promise<Response> {
+  const user = await requireUser(request, env);
+  if (user instanceof Response) return user;
+  await env.DB.prepare('DELETE FROM user_tools WHERE user_id = ? AND tool_id = ?').bind(user.id, toolId).run();
   return json({ ok: true });
 }
 
@@ -387,8 +407,12 @@ async function handle(request: Request, env: Env): Promise<Response> {
   if (url.pathname === '/api/me') return json({ user: await currentUser(request, env) });
   if (url.pathname === '/api/tools' && request.method === 'GET') return listTools(request, env);
   if (url.pathname === '/api/tools' && request.method === 'POST') return publishTool(request, env);
+  const toolMatch = url.pathname.match(/^\/api\/tools\/([^/]+)$/);
+  if (toolMatch && request.method === 'DELETE') return deleteTool(request, env, toolMatch[1]);
   if (url.pathname === '/api/my/tools' && request.method === 'GET') return myTools(request, env);
   if (url.pathname === '/api/my/tools' && request.method === 'POST') return addToMyTools(request, env);
+  const myToolMatch = url.pathname.match(/^\/api\/my\/tools\/([^/]+)$/);
+  if (myToolMatch && request.method === 'DELETE') return removeFromMyTools(request, env, myToolMatch[1]);
   const voteMatch = url.pathname.match(/^\/api\/recipes\/([^/]+)\/vote$/);
   if (voteMatch && (request.method === 'POST' || request.method === 'DELETE')) return voteRecipe(request, env, voteMatch[1]);
   return bad('Not found.', 404);

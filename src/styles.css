@@ -105,6 +105,19 @@ h1 {
   background: #e9f4fb;
 }
 
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tabs button.active {
+  border-color: #33795b;
+  background: #e1f0e7;
+  color: #1e5a41;
+}
+
 .toolbar {
   gap: 10px;
   flex-wrap: wrap;
@@ -188,6 +201,20 @@ textarea {
 .cardHeader {
   justify-content: space-between;
   gap: 12px;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.danger {
+  color: #8f2f26;
+  border-color: #e4b8b2;
+  background: #fff5f3;
 }
 
 .cardHeader p,
