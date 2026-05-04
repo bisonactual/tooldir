@@ -63,7 +63,9 @@ async function verifySignedValue(env: Env, signed: string | undefined): Promise<
 }
 
 async function currentUser(request: Request, env: Env): Promise<UserProfile | null> {
-  const userId = await verifySignedValue(env, parseCookies(request)[cookieName(env)]);
+  const auth = request.headers.get('authorization') || '';
+  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+  const userId = await verifySignedValue(env, bearer) || await verifySignedValue(env, parseCookies(request)[cookieName(env)]);
   if (!userId) return null;
   const row = await env.DB.prepare('SELECT id, display_name, avatar_url FROM users WHERE id = ?').bind(userId).first<any>();
   return row ? { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url } : null;
@@ -176,7 +178,9 @@ async function oauthCallback(provider: Provider, request: Request, env: Env): Pr
 
   const userId = await upsertOAuthUser(env, provider, profile);
   const session = await signedValue(env, userId);
-  const headers = new Headers({ location: env.APP_ORIGIN });
+  const redirectUrl = new URL(env.APP_ORIGIN);
+  redirectUrl.searchParams.set('session', session);
+  const headers = new Headers({ location: redirectUrl.toString() });
   headers.append('set-cookie', setSessionCookie(env, userId, session));
   headers.append('set-cookie', `ptl_oauth_state=; Path=/auth/${provider}; HttpOnly; Max-Age=0`);
   return new Response(null, { status: 302, headers });
@@ -396,7 +400,7 @@ export default {
             'access-control-allow-origin': corsOrigin(env),
             'access-control-allow-credentials': 'true',
             'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
-            'access-control-allow-headers': 'content-type',
+            'access-control-allow-headers': 'authorization, content-type',
             vary: 'origin',
           },
         });

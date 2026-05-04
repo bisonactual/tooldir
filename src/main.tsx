@@ -7,12 +7,21 @@ import type { LibraryTool, PublishToolInput, Recipe, RecipeInput, ToolInput, Use
 import './styles.css';
 
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || '';
+const SESSION_STORAGE_KEY = 'printnc-tool-library-session';
 const apiUrl = (path: string) => `${API_ORIGIN}${path}`;
 const authUrl = (path: string) => `${API_ORIGIN}${path}`;
+const sessionToken = () => localStorage.getItem(SESSION_STORAGE_KEY);
+const authHeaders = (body?: unknown): HeadersInit => {
+  const token = sessionToken();
+  return {
+    ...(body ? { 'content-type': 'application/json' } : {}),
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
+  };
+};
 
 const api = {
   async get<T>(path: string): Promise<T> {
-    const res = await fetch(apiUrl(path), { credentials: 'include' });
+    const res = await fetch(apiUrl(path), { credentials: 'include', headers: authHeaders() });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
     return res.json();
   },
@@ -20,7 +29,7 @@ const api = {
     const res = await fetch(apiUrl(path), {
       method,
       credentials: 'include',
-      headers: body ? { 'content-type': 'application/json' } : undefined,
+      headers: authHeaders(body),
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
@@ -54,6 +63,15 @@ function App() {
   const [message, setMessage] = useState('');
   const [tool, setTool] = useState<ToolInput>(emptyToolInput());
   const [recipe, setRecipe] = useState<RecipeInput>(emptyRecipeInput());
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const session = url.searchParams.get('session');
+    if (!session) return;
+    localStorage.setItem(SESSION_STORAGE_KEY, session);
+    url.searchParams.delete('session');
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+  }, []);
 
   async function refresh() {
     const [me, lib] = await Promise.all([
@@ -110,6 +128,13 @@ function App() {
     await refresh();
   }
 
+  function logout() {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    setUser(null);
+    setMyTools([]);
+    void fetch(authUrl('/auth/logout'), { credentials: 'include', headers: authHeaders() }).catch(() => undefined);
+  }
+
   return (
     <main>
       <header className="topbar">
@@ -122,7 +147,7 @@ function App() {
             <>
               {user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : <User size={18} />}
               <span>{user.displayName}</span>
-              <a className="iconButton" href={authUrl('/auth/logout')} title="Sign out"><LogOut size={18} /></a>
+              <button className="iconButton" onClick={logout} title="Sign out"><LogOut size={18} /></button>
             </>
           ) : (
             <>
