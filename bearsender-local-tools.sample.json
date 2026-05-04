@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "id": "tool-6mm-2f-endmill",
+      "toolNumber": 1,
+      "name": "6mm 2F end mill",
+      "type": "endmill",
+      "units": "mm",
+      "diameter": 6,
+      "flutes": 2,
+      "vAngle": 0,
+      "defaultRpm": 18000,
+      "defaultFeed": 1200,
+      "defaultPlunge": 250,
+      "stepdown": 2,
+      "stepover": 45,
+      "coolant": "off",
+      "notes": "General purpose router cutter"
+    },
+    {
+      "id": "tool-3mm-2f-endmill",
+      "toolNumber": 2,
+      "name": "3mm 2F end mill",
+      "type": "endmill",
+      "units": "mm",
+      "diameter": 3,
+      "flutes": 2,
+      "vAngle": 0,
+      "defaultRpm": 20000,
+      "defaultFeed": 650,
+      "defaultPlunge": 140,
+      "stepdown": 1,
+      "stepover": 40,
+      "coolant": "off",
+      "notes": "Small pockets and profiles"
+    },
+    {
+      "id": "tool-25mm-surfacing",
+      "toolNumber": 3,
+      "name": "25mm surfacing cutter",
+      "type": "surfacing",
+      "units": "mm",
+      "diameter": 25,
+      "flutes": 3,
+      "vAngle": 0,
+      "defaultRpm": 12000,
+      "defaultFeed": 1800,
+      "defaultPlunge": 200,
+      "stepdown": 0.5,
+      "stepover": 55,
+      "coolant": "off",
+      "notes": "Facing and spoilboard flattening"
+    },
+    {
+      "id": "tool-90deg-vbit",
+      "toolNumber": 4,
+      "name": "90 degree V-bit",
+      "type": "vbit",
+      "units": "mm",
+      "diameter": 12.7,
+      "flutes": 2,
+      "vAngle": 90,
+      "defaultRpm": 18000,
+      "defaultFeed": 900,
+      "defaultPlunge": 120,
+      "stepdown": 1,
+      "stepover": 20,
+      "coolant": "off",
+      "notes": "V-carving and chamfers"
+    }
+  ]
+}
