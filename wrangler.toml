@@ -5,10 +5,10 @@ compatibility_date = "2026-05-04"
 [[d1_databases]]
 binding = "DB"
 database_name = "printnc-tool-library"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "d0dc6064-f30c-4634-89f1-525e8677a247"
 
 [vars]
-APP_ORIGIN = "http://localhost:5173"
+APP_ORIGIN = "https://bisonactual.github.io/tooldir"
 SESSION_COOKIE_NAME = "ptl_session"
 
 # Set secrets with:
