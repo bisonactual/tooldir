@@ -224,16 +224,6 @@ small,
   color: #697266;
 }
 
-.notes {
-  color: #38463a;
-  font-size: 0.9rem;
-  margin-top: 6px;
-  max-width: 62ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .recipes {
   display: grid;
   gap: 8px;
@@ -359,4 +349,79 @@ aside {
   .toolbar > .button {
     flex: 1 1 140px;
   }
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgb(23 32 25 / 0.45);
+}
+
+.modal {
+  width: min(720px, 100%);
+  max-height: min(760px, 90vh);
+  overflow: auto;
+  border: 1px solid #c8ccc2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+  box-shadow: 0 24px 80px rgb(23 32 25 / 0.22);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.modalHeader p {
+  color: #697266;
+  margin-top: 4px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.detailGrid div,
+.detailBlock,
+.detailRecipe {
+  border: 1px solid #e1e4dd;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f8faf6;
+}
+
+.detailGrid span,
+.detailBlock > span {
+  display: block;
+  margin-bottom: 4px;
+  color: #697266;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.detailBlock {
+  margin-top: 10px;
+}
+
+.detailBlock p,
+.detailRecipe p {
+  color: #38463a;
+  margin-top: 5px;
+}
+
+.detailRecipe + .detailRecipe {
+  margin-top: 8px;
 }

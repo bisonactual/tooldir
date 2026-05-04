@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Download, FileDown, Github, Library, List, LogOut, Plus, Search, ThumbsUp, Trash2, Upload, UploadCloud, User, X } from 'lucide-react';
+import { Download, FileDown, Github, Info, Library, List, LogOut, Plus, Search, ThumbsUp, Trash2, Upload, UploadCloud, User, X } from 'lucide-react';
 import { bearSenderToolToPublishInput, exportBearSenderPayload, exportFusionPayload } from './lib/adapters';
 import { parseToolLibraryFile } from './lib/importers';
 import { COOLANT_MODES, CUTTER_MATERIAL_LABELS, CUTTER_MATERIALS, FLUTE_COUNTS, generatedToolName, emptyRecipeInput, emptyToolInput, TOOL_COATING_LABELS, TOOL_COATINGS, TOOL_TYPE_LABELS, TOOL_TYPES, WORK_MATERIALS } from './lib/types';
@@ -75,6 +75,7 @@ function App() {
   const [tool, setTool] = useState<ToolInput>(emptyToolInput());
   const [recipe, setRecipe] = useState<RecipeInput>(emptyRecipeInput());
   const [customMaterial, setCustomMaterial] = useState('');
+  const [details, setDetails] = useState<LibraryTool | UserTool | null>(null);
 
   async function refresh() {
     const [me, lib] = await Promise.all([
@@ -232,9 +233,9 @@ function App() {
                     <div>
                       <h3>{entry.name}</h3>
                       <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_COATING_LABELS[entry.coating]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
-                      {entry.notes && <p className="notes" title={entry.notes}>{entry.notes}</p>}
                     </div>
                     <div className="cardActions">
+                      <button className="iconButton" title="Tool details" onClick={() => setDetails(entry)}><Info size={16} /></button>
                       {user?.isAdmin && <button className="iconButton danger" title="Delete tool" onClick={() => void deleteTool(entry).catch(err => setMessage(err.message))}><Trash2 size={16} /></button>}
                       <button disabled={!user} onClick={() => void addToMine(entry, topRecipeByTool.get(entry.id)?.id).catch(err => setMessage(err.message))}><Plus size={16} /> My list</button>
                     </div>
@@ -245,7 +246,6 @@ function App() {
                         <div>
                           <strong>{item.material}</strong>
                           <span>{item.operation} · {item.rpm} rpm · {item.feed} mm/min · {item.stepdown} mm DOC · {item.stepover}% WOC</span>
-                          {item.notes && <span className="notes" title={item.notes}>{item.notes}</span>}
                         </div>
                         <button className={item.viewerHasVoted ? 'voted' : ''} disabled={!user} onClick={() => void toggleVote(item).catch(err => setMessage(err.message))}>
                           <ThumbsUp size={16} /> {item.voteCount}
@@ -267,9 +267,11 @@ function App() {
                     <div>
                       <h3>T{item.toolNumber} · {item.tool.name}</h3>
                       <p>{item.tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[item.tool.cutterMaterial]} · {TOOL_COATING_LABELS[item.tool.coating]} · {TOOL_TYPE_LABELS[item.tool.type]} · {item.tool.diameter} mm · {item.tool.flutes}F</p>
-                      {item.tool.notes && <p className="notes" title={item.tool.notes}>{item.tool.notes}</p>}
                     </div>
-                    <button className="iconButton danger" title="Remove from my tools" onClick={() => void removeMyTool(item).catch(err => setMessage(err.message))}><X size={16} /></button>
+                    <div className="cardActions">
+                      <button className="iconButton" title="Tool details" onClick={() => setDetails(item)}><Info size={16} /></button>
+                      <button className="iconButton danger" title="Remove from my tools" onClick={() => void removeMyTool(item).catch(err => setMessage(err.message))}><X size={16} /></button>
+                    </div>
                   </div>
                   {item.recipe ? (
                     <div className="recipes">
@@ -277,7 +279,6 @@ function App() {
                         <div>
                           <strong>{item.recipe.material}</strong>
                           <span>{item.recipe.operation} · {item.recipe.rpm} rpm · {item.recipe.feed} mm/min · {item.recipe.stepdown} mm DOC · {item.recipe.stepover}% WOC</span>
-                          {item.recipe.notes && <span className="notes" title={item.recipe.notes}>{item.recipe.notes}</span>}
                         </div>
                       </div>
                     </div>
@@ -320,9 +321,50 @@ function App() {
 
         </aside>
       </div>
+      {details && <ToolDetailsModal details={details} onClose={() => setDetails(null)} />}
     </main>
   );
 }
 
 captureSessionFromUrl();
 createRoot(document.getElementById('root')!).render(<App />);
+
+function ToolDetailsModal({ details, onClose }: { details: LibraryTool | UserTool; onClose: () => void }) {
+  const tool = 'toolNumber' in details ? details.tool : details;
+  const recipes = 'toolNumber' in details ? (details.recipe ? [details.recipe] : []) : details.recipes;
+  return (
+    <div className="modalBackdrop" role="presentation" onClick={onClose}>
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="tool-details-title" onClick={event => event.stopPropagation()}>
+        <div className="modalHeader">
+          <div>
+            <h2 id="tool-details-title">{tool.name}</h2>
+            <p>{tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[tool.cutterMaterial]} · {TOOL_COATING_LABELS[tool.coating]} · {TOOL_TYPE_LABELS[tool.type]} · {tool.diameter} mm · {tool.flutes}F</p>
+          </div>
+          <button className="iconButton" title="Close" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="detailGrid">
+          <div><span>Manufacturer</span><strong>{tool.manufacturer || 'Unbranded'}</strong></div>
+          <div><span>Type</span><strong>{CUTTER_MATERIAL_LABELS[tool.cutterMaterial]}</strong></div>
+          <div><span>Coating</span><strong>{TOOL_COATING_LABELS[tool.coating]}</strong></div>
+          <div><span>Shape</span><strong>{TOOL_TYPE_LABELS[tool.type]}</strong></div>
+          <div><span>Diameter</span><strong>{tool.diameter} mm</strong></div>
+          <div><span>Flutes</span><strong>{tool.flutes}</strong></div>
+        </div>
+        <div className="detailBlock">
+          <span>Tool Notes</span>
+          <p>{tool.notes || 'No notes.'}</p>
+        </div>
+        <div className="detailBlock">
+          <span>Recipes</span>
+          {recipes.length ? recipes.map(recipe => (
+            <div className="detailRecipe" key={recipe.id}>
+              <strong>{recipe.material}</strong>
+              <p>{recipe.operation} · {recipe.rpm} rpm · {recipe.feed} mm/min · {recipe.stepdown} mm DOC · {recipe.stepover}% WOC</p>
+              <p>{recipe.notes || 'No recipe notes.'}</p>
+            </div>
+          )) : <p>No recipes.</p>}
+        </div>
+      </section>
+    </div>
+  );
+}
