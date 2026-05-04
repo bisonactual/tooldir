@@ -84,6 +84,14 @@ function clearSessionCookie(env: Env): string {
   return `${cookieName(env)}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
+function corsOrigin(env: Env): string {
+  try {
+    return new URL(env.APP_ORIGIN).origin;
+  } catch {
+    return env.APP_ORIGIN;
+  }
+}
+
 function toolFromRow(row: any): Tool {
   return {
     id: row.id,
@@ -385,7 +393,7 @@ export default {
         return new Response(null, {
           status: 204,
           headers: {
-            'access-control-allow-origin': env.APP_ORIGIN,
+            'access-control-allow-origin': corsOrigin(env),
             'access-control-allow-credentials': 'true',
             'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
             'access-control-allow-headers': 'content-type',
@@ -395,7 +403,7 @@ export default {
       }
       const response = await handle(request, env);
       const headers = new Headers(response.headers);
-      headers.set('access-control-allow-origin', env.APP_ORIGIN);
+      headers.set('access-control-allow-origin', corsOrigin(env));
       headers.set('access-control-allow-credentials', 'true');
       headers.set('vary', 'origin');
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
