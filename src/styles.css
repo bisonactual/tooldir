@@ -224,6 +224,16 @@ small,
   color: #697266;
 }
 
+.notes {
+  color: #38463a;
+  font-size: 0.9rem;
+  margin-top: 6px;
+  max-width: 62ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .recipes {
   display: grid;
   gap: 8px;

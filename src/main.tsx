@@ -232,6 +232,7 @@ function App() {
                     <div>
                       <h3>{entry.name}</h3>
                       <p>{entry.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[entry.cutterMaterial]} · {TOOL_COATING_LABELS[entry.coating]} · {TOOL_TYPE_LABELS[entry.type]} · {entry.diameter} mm · {entry.flutes}F</p>
+                      {entry.notes && <p className="notes" title={entry.notes}>{entry.notes}</p>}
                     </div>
                     <div className="cardActions">
                       {user?.isAdmin && <button className="iconButton danger" title="Delete tool" onClick={() => void deleteTool(entry).catch(err => setMessage(err.message))}><Trash2 size={16} /></button>}
@@ -244,6 +245,7 @@ function App() {
                         <div>
                           <strong>{item.material}</strong>
                           <span>{item.operation} · {item.rpm} rpm · {item.feed} mm/min · {item.stepdown} mm DOC · {item.stepover}% WOC</span>
+                          {item.notes && <span className="notes" title={item.notes}>{item.notes}</span>}
                         </div>
                         <button className={item.viewerHasVoted ? 'voted' : ''} disabled={!user} onClick={() => void toggleVote(item).catch(err => setMessage(err.message))}>
                           <ThumbsUp size={16} /> {item.voteCount}
@@ -265,6 +267,7 @@ function App() {
                     <div>
                       <h3>T{item.toolNumber} · {item.tool.name}</h3>
                       <p>{item.tool.manufacturer || 'Unbranded'} · {CUTTER_MATERIAL_LABELS[item.tool.cutterMaterial]} · {TOOL_COATING_LABELS[item.tool.coating]} · {TOOL_TYPE_LABELS[item.tool.type]} · {item.tool.diameter} mm · {item.tool.flutes}F</p>
+                      {item.tool.notes && <p className="notes" title={item.tool.notes}>{item.tool.notes}</p>}
                     </div>
                     <button className="iconButton danger" title="Remove from my tools" onClick={() => void removeMyTool(item).catch(err => setMessage(err.message))}><X size={16} /></button>
                   </div>
@@ -274,6 +277,7 @@ function App() {
                         <div>
                           <strong>{item.recipe.material}</strong>
                           <span>{item.recipe.operation} · {item.recipe.rpm} rpm · {item.recipe.feed} mm/min · {item.recipe.stepdown} mm DOC · {item.recipe.stepover}% WOC</span>
+                          {item.recipe.notes && <span className="notes" title={item.recipe.notes}>{item.recipe.notes}</span>}
                         </div>
                       </div>
                     </div>
